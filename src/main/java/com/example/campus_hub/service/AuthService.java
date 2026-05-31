@@ -7,6 +7,9 @@ import com.example.campus_hub.security.JwtUtil;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.util.List;
 
 @Service
 @RequiredArgsConstructor
@@ -92,5 +95,34 @@ public class AuthService {
                 .orElseThrow(() ->
                         new RuntimeException("USER_NOT_FOUND")
                 );
+    }
+
+    // ── List users awaiting admin approval ────────────────
+    public List<User> getPendingUsers() {
+        return userRepository.findByStatus(User.Status.PENDING);
+    }
+
+    // ── Approve a pending user ────────────────────────────
+    @Transactional
+    public User approveUser(String userId, String role) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("USER_NOT_FOUND"));
+
+        if (user.getStatus() == User.Status.ACTIVE) {
+            throw new RuntimeException("ALREADY_APPROVED");
+        }
+
+        user.setStatus(User.Status.ACTIVE);
+        user.setRole(User.Role.valueOf(role)); // "STUDENT" or "TEACHER"
+        User saved = userRepository.save(user);
+
+        // Send approval email in background
+        emailService.sendApprovalEmail(
+                saved.getEmail(),
+                saved.getFullName(),
+                saved.getRole().name()
+        );
+
+        return saved;
     }
 }

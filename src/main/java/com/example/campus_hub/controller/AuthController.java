@@ -5,11 +5,14 @@ import com.example.campus_hub.entity.User;
 import com.example.campus_hub.service.AuthService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/auth")
@@ -100,5 +103,47 @@ public class AuthController {
         return ResponseEntity.ok(
                 ApiResponse.success("User fetched", user)
         );
+    }
+    // GET /api/users/pending
+    @GetMapping("/users/pending")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<ApiResponse<List<User>>> getPendingUsers() {
+        List<User> users = authService.getPendingUsers();
+        return ResponseEntity.ok(
+                ApiResponse.success("Pending users fetched", users)
+        );
+    }
+
+    // PATCH /api/users/:id/approve
+    @PatchMapping("/users/{id}/approve")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<ApiResponse<User>> approveUser(
+            @PathVariable String id,
+            @RequestBody Map<String, String> body
+    ) {
+        String role = body.get("role");
+
+        if (role == null ||
+                (!role.equals("STUDENT") && !role.equals("TEACHER"))) {
+            return ResponseEntity.badRequest()
+                    .body(ApiResponse.error("Role must be STUDENT or TEACHER"));
+        }
+
+        try {
+            User user = authService.approveUser(id, role);
+            return ResponseEntity.ok(
+                    ApiResponse.success("User approved", user)
+            );
+        } catch (RuntimeException e) {
+            return switch (e.getMessage()) {
+                case "USER_NOT_FOUND" ->
+                        ResponseEntity.status(HttpStatus.NOT_FOUND)
+                                .body(ApiResponse.error("User not found"));
+                case "ALREADY_APPROVED" ->
+                        ResponseEntity.status(HttpStatus.CONFLICT)
+                                .body(ApiResponse.error("User already approved"));
+                default -> throw e;
+            };
+        }
     }
 }

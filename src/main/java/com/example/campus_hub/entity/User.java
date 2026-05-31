@@ -21,7 +21,14 @@ public class User {
     public enum Status {
         ACTIVE, PENDING, SUSPENDED
     }
+    // Add profileImage field
+    @Lob          // @Lob tells JPA this is a Large Object (BLOB)
+    @Column(name = "profile_image")
+    private byte[] profileImage;
 
+    // Add getter and setter
+    public byte[] getProfileImage()              { return profileImage; }
+    public void   setProfileImage(byte[] image)  { this.profileImage = image; }
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
     private String id;
