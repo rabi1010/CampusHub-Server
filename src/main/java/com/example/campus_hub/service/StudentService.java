@@ -4,10 +4,7 @@ import com.example.campus_hub.dto.CreateStudentRequest;
 import com.example.campus_hub.dto.UpdateStudentRequest;
 import com.example.campus_hub.entity.Student;
 import com.example.campus_hub.entity.User;
-import com.example.campus_hub.repository.BatchRepository;
-import com.example.campus_hub.repository.DepartmentRepository;
-import com.example.campus_hub.repository.StudentRepository;
-import com.example.campus_hub.repository.UserRepository;
+import com.example.campus_hub.repository.*;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -29,6 +26,7 @@ public class StudentService {
     private final DepartmentRepository departmentRepository;
     private final BatchRepository      batchRepository;
     private final PasswordEncoder      passwordEncoder;
+    private final EmailService emailService;
 
     // Constructor injection — no Lombok @RequiredArgsConstructor
     public StudentService(
@@ -36,13 +34,15 @@ public class StudentService {
             UserRepository       userRepository,
             DepartmentRepository departmentRepository,
             BatchRepository      batchRepository,
-            PasswordEncoder      passwordEncoder
+            PasswordEncoder      passwordEncoder,
+             EmailService         emailService
     ) {
         this.studentRepository    = studentRepository;
         this.userRepository       = userRepository;
         this.departmentRepository = departmentRepository;
         this.batchRepository      = batchRepository;
         this.passwordEncoder      = passwordEncoder;
+        this.emailService         = emailService;
     }
 
     // ════════════════════════════════════════════════════
@@ -118,6 +118,11 @@ public class StudentService {
         user.setRole(User.Role.STUDENT);
         user.setStatus(User.Status.ACTIVE);
         User savedUser = userRepository.save(user);
+        emailService.sendStudentCreatedEmail(
+                savedUser.getEmail(),
+                savedUser.getFullName(),
+                request.getRollNo()
+        );
 
         // Step 2: Create Student linked to User
         // Because @Transactional wraps this whole method,
@@ -191,6 +196,7 @@ public class StudentService {
         // Just like Node.js: delete User → Student auto-deleted
         // This requires @OneToOne(cascade = CascadeType.ALL)
         // on the User side — we will add that next
+        studentRepository.delete(student);
         userRepository.delete(student.getUser());
     }
 
@@ -243,4 +249,6 @@ public class StudentService {
 
         return image;
     }
+
+
 }

@@ -18,6 +18,8 @@ public interface StudentRepository
     // Find student by their linked User ID
     Optional<Student> findByUserId(String userId);
 
+    Optional<Student> findByRollNo(String rollNo);
+
     // Search across multiple fields with pagination
     // This is a custom JPQL query
     // JPQL uses entity class names (Student, not "students" table)
