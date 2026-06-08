@@ -3,8 +3,10 @@ package com.example.campus_hub.controller;
 import com.example.campus_hub.dto.*;
 import com.example.campus_hub.entity.User;
 import com.example.campus_hub.service.AuthService;
+import com.example.campus_hub.service.StudentService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -12,7 +14,6 @@ import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
-import java.util.Map;
 
 @RestController
 @RequestMapping("/api/auth")
@@ -25,7 +26,6 @@ public class AuthController {
 
     private final AuthService authService;
 
-    // POST /api/auth/register
     @PostMapping("/register")
     public ResponseEntity<ApiResponse<Object>> register(
             @Valid @RequestBody RegisterRequest request
@@ -42,8 +42,17 @@ public class AuthController {
             if ("EMAIL_TAKEN".equals(e.getMessage())) {
                 return ResponseEntity
                         .status(HttpStatus.CONFLICT)
+                        .body(ApiResponse.error("This email is already registered"));
+            }
+            if (e.getMessage() != null &&
+                    e.getMessage().startsWith("STUDENT_NOT_FOUND")) {
+                String rollNo = e.getMessage().contains(":")
+                        ? e.getMessage().split(":")[1]
+                        : "unknown";
+                return ResponseEntity
+                        .status(HttpStatus.NOT_FOUND)
                         .body(ApiResponse.error(
-                                "This email is already registered"
+                                "No student found with roll number: " + rollNo
                         ));
             }
             throw e;
@@ -114,23 +123,22 @@ public class AuthController {
         );
     }
 
-    // PATCH /api/users/:id/approve
     @PatchMapping("/users/{id}/approve")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ApiResponse<User>> approveUser(
             @PathVariable String id,
-            @RequestBody Map<String, String> body
+            @RequestBody ApproveUserRequest request
     ) {
-        String role = body.get("role");
-
-        if (role == null ||
-                (!role.equals("STUDENT") && !role.equals("TEACHER"))) {
+        if (request.getRole() == null ||
+                (!request.getRole().equals("STUDENT") &&
+                        !request.getRole().equals("TEACHER") &&
+                        !request.getRole().equals("PARENT"))) {
             return ResponseEntity.badRequest()
-                    .body(ApiResponse.error("Role must be STUDENT or TEACHER"));
+                    .body(ApiResponse.error("Role must be STUDENT, TEACHER, or PARENT"));
         }
 
         try {
-            User user = authService.approveUser(id, role);
+            User user = authService.approveUser(id, request);
             return ResponseEntity.ok(
                     ApiResponse.success("User approved", user)
             );
@@ -142,8 +150,31 @@ public class AuthController {
                 case "ALREADY_APPROVED" ->
                         ResponseEntity.status(HttpStatus.CONFLICT)
                                 .body(ApiResponse.error("User already approved"));
+                case "STUDENT_DETAILS_REQUIRED" ->
+                        ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                                .body(ApiResponse.error(
+                                        "rollNo, departmentId, batchId required for STUDENT"
+                                ));
+                case "ROLL_NO_TAKEN" ->
+                        ResponseEntity.status(HttpStatus.CONFLICT)
+                                .body(ApiResponse.error("Roll number already taken"));
+                case "TEACHER_DETAILS_REQUIRED" ->                          // ← add
+                        ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                                .body(ApiResponse.error(
+                                        "employeeId and departmentId required for TEACHER"
+                                ));
+                case "EMPLOYEE_ID_TAKEN" ->                                 // ← add
+                        ResponseEntity.status(HttpStatus.CONFLICT)
+                                .body(ApiResponse.error("Employee ID already exists"));
+                case "PARENT_DETAILS_REQUIRED" ->                          // ← add this too
+                        ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                                .body(ApiResponse.error(
+                                        "studentIds required for PARENT"
+                                ));
                 default -> throw e;
             };
         }
     }
+
+
 }
