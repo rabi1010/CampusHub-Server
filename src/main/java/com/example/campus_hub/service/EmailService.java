@@ -312,4 +312,84 @@ public class EmailService {
                 java.time.Year.now().getValue()
         );
     }
+    @Async
+    public void sendAbsenceNotificationEmail(
+            String toEmail,
+            String parentName,
+            String studentName,
+            String courseName,
+            String date
+    ) {
+        try {
+            MimeMessage message = mailSender.createMimeMessage();
+            MimeMessageHelper helper = new MimeMessageHelper(
+                    message, true, "UTF-8"
+            );
+            helper.setFrom("CampusHub <" + fromEmail + ">");
+            helper.setTo(toEmail);
+            helper.setSubject(
+                    "⚠️ Attendance Alert — " + studentName +
+                            " was absent today"
+            );
+            helper.setText(
+                    buildAbsenceHtml(
+                            parentName, studentName, courseName, date
+                    ), true
+            );
+            mailSender.send(message);
+            log.info("Absence notification sent to: {}", toEmail);
+        } catch (Exception e) {
+            log.error("Absence email failed: {}", e.getMessage());
+        }
+    }
+
+    private String buildAbsenceHtml(
+            String parentName,
+            String studentName,
+            String courseName,
+            String date
+    ) {
+        return """
+        <html><body style="font-family:Arial;background:#f5f5f5">
+        <div style="max-width:560px;margin:40px auto;background:#fff;
+                    border-radius:16px;overflow:hidden">
+          <div style="background:#0d0d1f;padding:32px;text-align:center">
+            <h1 style="color:#3aba84;margin:0">CampusHub</h1>
+          </div>
+          <div style="padding:32px">
+            <h2>Dear %s,</h2>
+            <div style="background:#fef2f2;border:1px solid #fecaca;
+                        border-radius:10px;padding:16px;margin:20px 0">
+              <p>⚠️ <strong>Attendance Alert</strong></p>
+              <p>Your child <strong>%s</strong> was marked
+                 <strong style="color:#dc2626">ABSENT</strong>
+                 in the following class:</p>
+              <p><strong>Course:</strong> %s</p>
+              <p><strong>Date:</strong> %s</p>
+            </div>
+            <p>If you have any questions, please contact
+               the college directly.</p>
+            <div style="text-align:center;margin:24px 0">
+              <a href="http://localhost:5173/login"
+                 style="background:#1f9d68;color:#fff;
+                        padding:14px 32px;border-radius:10px;
+                        text-decoration:none">
+                View Attendance →
+              </a>
+            </div>
+          </div>
+          <div style="background:#f8f8f8;padding:20px;
+                      text-align:center;font-size:12px;color:#999">
+            © %d CampusHub
+          </div>
+        </div>
+        </body></html>
+        """.formatted(
+                parentName,
+                studentName,
+                courseName,
+                date,
+                java.time.Year.now().getValue()
+        );
+    }
 }
