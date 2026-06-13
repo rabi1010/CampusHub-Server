@@ -43,4 +43,5 @@ public interface AttendanceRepository
             @Param("studentId") String studentId,
             @Param("status")    Attendance.Status status
     );
+    long countByStatus(Attendance.Status status);
 }
