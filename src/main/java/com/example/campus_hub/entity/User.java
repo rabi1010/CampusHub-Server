@@ -1,6 +1,5 @@
 package com.example.campus_hub.entity;
 
-import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
@@ -16,20 +15,13 @@ import java.time.LocalDateTime;
 public class User {
 
     public enum Role {
-        ADMIN, TEACHER, STUDENT, PARENT, PENDING
+        ADMIN, TEACHER, STUDENT, PENDING
     }
 
     public enum Status {
         ACTIVE, PENDING, SUSPENDED
     }
-    // Add profileImage field
-    @Lob          // @Lob tells JPA this is a Large Object (BLOB)
-    @Column(name = "profile_image")
-    private byte[] profileImage;
 
-    // Add getter and setter
-    public byte[] getProfileImage()              { return profileImage; }
-    public void   setProfileImage(byte[] image)  { this.profileImage = image; }
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
     private String id;
@@ -37,7 +29,6 @@ public class User {
     @Column(unique = true, nullable = false)
     private String email;
 
-    @JsonIgnore
     @Column(nullable = false)
     private String password;
 
@@ -61,6 +52,4 @@ public class User {
 
     @UpdateTimestamp
     private LocalDateTime updatedAt;
-
-
 }
