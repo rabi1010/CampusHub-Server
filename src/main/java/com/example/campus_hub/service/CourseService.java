@@ -5,6 +5,8 @@ import com.example.campus_hub.dto.UpdateCourseRequest;
 import com.example.campus_hub.entity.Course;
 import com.example.campus_hub.repository.CourseRepository;
 import com.example.campus_hub.repository.DepartmentRepository;
+import com.example.campus_hub.repository.AttendanceRepository;
+import com.example.campus_hub.repository.MarkRepository;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -17,13 +19,19 @@ public class CourseService {
 
     private final CourseRepository     courseRepository;
     private final DepartmentRepository departmentRepository;
+    private final MarkRepository       markRepository;
+    private final AttendanceRepository attendanceRepository;
 
     public CourseService(
             CourseRepository     courseRepository,
-            DepartmentRepository departmentRepository
+            DepartmentRepository departmentRepository,
+            MarkRepository       markRepository,
+            AttendanceRepository attendanceRepository
     ) {
         this.courseRepository     = courseRepository;
         this.departmentRepository = departmentRepository;
+        this.markRepository       = markRepository;
+        this.attendanceRepository = attendanceRepository;
     }
 
     // ════════════════════════════════════════════════════
@@ -125,6 +133,8 @@ public class CourseService {
                 .orElseThrow(() ->
                         new RuntimeException("COURSE_NOT_FOUND")
                 );
+        markRepository.deleteByCourseId(id);
+        attendanceRepository.deleteByCourseId(id);
         courseRepository.delete(course);
     }
 }

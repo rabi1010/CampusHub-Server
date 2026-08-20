@@ -2,6 +2,7 @@ package com.example.campus_hub.repository;
 
 import com.example.campus_hub.entity.Mark;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -28,6 +29,18 @@ public interface MarkRepository
             String courseId,
             Mark.ExamType examType
     );
+
+    @Modifying
+    @Query("DELETE FROM Mark m WHERE m.student.id = :studentId")
+    void deleteByStudentId(@Param("studentId") String studentId);
+
+    @Modifying
+    @Query("DELETE FROM Mark m WHERE m.course.id = :courseId")
+    void deleteByCourseId(@Param("courseId") String courseId);
+
+    @Modifying
+    @Query("DELETE FROM Mark m WHERE m.uploadedBy.id = :userId")
+    void deleteByUploadedById(@Param("userId") String userId);
 
     // GPA calculation — average percentage across all courses
     @Query("""

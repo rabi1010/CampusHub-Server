@@ -5,6 +5,7 @@ import com.example.campus_hub.entity.Notice.ForRole;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -39,4 +40,8 @@ public interface NoticeRepository
             @Param("search") String search,
             Pageable pageable
     );
+
+    @Modifying
+    @Query("DELETE FROM Notice n WHERE n.createdBy.id = :userId")
+    void deleteByCreatedById(@Param("userId") String userId);
 }

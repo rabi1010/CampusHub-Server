@@ -2,6 +2,7 @@ package com.example.campus_hub.service;
 
 import com.example.campus_hub.dto.CreateParentRequest;
 import com.example.campus_hub.dto.UpdateParentRequest;
+import com.example.campus_hub.dto.ParentResponse;
 import com.example.campus_hub.entity.Parent;
 import com.example.campus_hub.entity.Student;
 import com.example.campus_hub.entity.User;
@@ -45,21 +46,25 @@ public class ParentService {
     // ════════════════════════════════════════════════════
     // GET ALL
     // ════════════════════════════════════════════════════
-    public Page<Parent> getAll(int page, int size, String search) {
+    @Transactional(readOnly = true)
+    public Page<ParentResponse> getAll(int page, int size, String search) {
         Pageable pageable = PageRequest.of(
             page - 1,
             size,
             Sort.by(Sort.Direction.DESC, "createdAt")
         );
-        return parentRepository.searchParents(search, pageable);
+        return parentRepository.searchParents(search, pageable)
+            .map(ParentResponse::from);
     }
 
     // ════════════════════════════════════════════════════
     // GET ONE
     // ════════════════════════════════════════════════════
-    public Parent getById(String id) {
-        return parentRepository.findById(id)
+    @Transactional(readOnly = true)
+    public ParentResponse getById(String id) {
+        Parent parent = parentRepository.findById(id)
             .orElseThrow(() -> new RuntimeException("PARENT_NOT_FOUND"));
+        return ParentResponse.from(parent);
     }
 
     // ════════════════════════════════════════════════════
@@ -73,11 +78,13 @@ public class ParentService {
     // ════════════════════════════════════════════════════
     // GET BY USER EMAIL
     // ════════════════════════════════════════════════════
-    public Parent getByUserEmail(String email) {
+    @Transactional(readOnly = true)
+    public ParentResponse getByUserEmail(String email) {
         User user = userRepository.findByEmail(email)
             .orElseThrow(() -> new RuntimeException("USER_NOT_FOUND"));
-        return parentRepository.findByUserId(user.getId())
+        Parent parent = parentRepository.findByUserId(user.getId())
             .orElseThrow(() -> new RuntimeException("PARENT_NOT_FOUND"));
+        return ParentResponse.from(parent);
     }
 
     // ════════════════════════════════════════════════════
