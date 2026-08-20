@@ -76,7 +76,8 @@ public class AuthService {
                 .password(passwordEncoder.encode(request.getPassword()))
                 .fullName(request.getFullName())
                 .phone(request.getPhone())
-                .role(User.Role.PENDING)
+                // Keep the requested role visible to admins while status controls access.
+                .role(User.Role.valueOf(request.getRole()))
                 .status(User.Status.PENDING)
                 .build();
 

@@ -5,6 +5,9 @@ import com.example.campus_hub.dto.UpdateTeacherRequest;
 import com.example.campus_hub.entity.Teacher;
 import com.example.campus_hub.entity.User;
 import com.example.campus_hub.repository.DepartmentRepository;
+import com.example.campus_hub.repository.AttendanceRepository;
+import com.example.campus_hub.repository.MarkRepository;
+import com.example.campus_hub.repository.NoticeRepository;
 import com.example.campus_hub.repository.TeacherRepository;
 import com.example.campus_hub.repository.UserRepository;
 import org.springframework.data.domain.Page;
@@ -23,19 +26,28 @@ public class TeacherService {
     private final DepartmentRepository departmentRepository;
     private final PasswordEncoder      passwordEncoder;
     private final EmailService         emailService;
+    private final MarkRepository       markRepository;
+    private final AttendanceRepository attendanceRepository;
+    private final NoticeRepository     noticeRepository;
 
     public TeacherService(
             TeacherRepository    teacherRepository,
             UserRepository       userRepository,
             DepartmentRepository departmentRepository,
             PasswordEncoder      passwordEncoder,
-            EmailService         emailService
+            EmailService         emailService,
+            MarkRepository       markRepository,
+            AttendanceRepository attendanceRepository,
+            NoticeRepository     noticeRepository
     ) {
         this.teacherRepository    = teacherRepository;
         this.userRepository       = userRepository;
         this.departmentRepository = departmentRepository;
         this.passwordEncoder      = passwordEncoder;
         this.emailService         = emailService;
+        this.markRepository       = markRepository;
+        this.attendanceRepository = attendanceRepository;
+        this.noticeRepository     = noticeRepository;
     }
 
     // ════════════════════════════════════════════════════
@@ -169,8 +181,10 @@ public class TeacherService {
                         new RuntimeException("TEACHER_NOT_FOUND")
                 );
 
-        // Delete teacher first, then user
+        String userId = teacher.getUser().getId();
+        markRepository.deleteByUploadedById(userId);
+        attendanceRepository.deleteByMarkedById(userId);
+        noticeRepository.deleteByCreatedById(userId);
         teacherRepository.delete(teacher);
-        userRepository.delete(teacher.getUser());
     }
 }

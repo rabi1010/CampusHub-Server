@@ -85,18 +85,11 @@ public class AttendanceService {
                 throw new RuntimeException("INVALID_STATUS");
             }
 
-            // Skip if already marked for this date
-            if (attendanceRepository
-                    .existsByStudentIdAndCourseIdAndDate(
-                            student.getId(),
-                            course.getId(),
-                            request.getDate()
-                    )) {
-                continue;
-            }
-
-            // Save attendance record
-            Attendance attendance = new Attendance();
+            Attendance attendance = attendanceRepository
+                    .findByStudentIdAndCourseIdAndDate(
+                            student.getId(), course.getId(), request.getDate()
+                    )
+                    .orElse(new Attendance());
             attendance.setStudent(student);
             attendance.setCourse(course);
             attendance.setMarkedBy(teacher);
@@ -141,6 +134,7 @@ public class AttendanceService {
     // ════════════════════════════════════════════════════
     // GET BY COURSE — teacher views class attendance
     // ════════════════════════════════════════════════════
+    @Transactional(readOnly = true)
     public Page<Attendance> getByCourse(
             String courseId, int page, int size) {
 
@@ -156,6 +150,7 @@ public class AttendanceService {
     // ════════════════════════════════════════════════════
     // GET BY STUDENT — student/parent views attendance
     // ════════════════════════════════════════════════════
+    @Transactional(readOnly = true)
     public Page<Attendance> getByStudent(
             String studentId, int page, int size) {
 
@@ -193,6 +188,16 @@ public class AttendanceService {
         return new AttendanceSummary(
                 present, absent, late, total, percentage
         );
+    }
+
+    @Transactional(readOnly = true)
+    public AttendanceSummary getSummaryForUser(String email) {
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new RuntimeException("USER_NOT_FOUND"));
+        String studentId = studentRepository.findByUserId(user.getId())
+                .orElseThrow(() -> new RuntimeException("STUDENT_NOT_FOUND"))
+                .getId();
+        return getSummary(studentId);
     }
 
     // Simple summary record

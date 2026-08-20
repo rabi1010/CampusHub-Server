@@ -23,9 +23,11 @@ public class User {
         ACTIVE, PENDING, SUSPENDED
     }
     // Add profileImage field
-    @Lob          // @Lob tells JPA this is a Large Object (BLOB)
-    @Column(name = "profile_image")
+    @Column(name = "profile_image", columnDefinition = "bytea")
     private byte[] profileImage;
+
+    @Column(name = "profile_image_content_type")
+    private String profileImageContentType;
 
     // Add getter and setter
     public byte[] getProfileImage()              { return profileImage; }

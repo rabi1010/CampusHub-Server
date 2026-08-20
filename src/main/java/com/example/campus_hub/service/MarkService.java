@@ -101,6 +101,7 @@ public class MarkService {
     // ════════════════════════════════════════════════════
     // GET BY STUDENT — student views own marks
     // ════════════════════════════════════════════════════
+    @Transactional(readOnly = true)
     public List<Mark> getByStudent(String studentId) {
         return markRepository.findByStudentId(studentId);
     }
@@ -108,6 +109,7 @@ public class MarkService {
     // ════════════════════════════════════════════════════
     // GET BY COURSE — teacher views all marks for a course
     // ════════════════════════════════════════════════════
+    @Transactional(readOnly = true)
     public List<Mark> getByCourse(String courseId) {
         return markRepository.findByCourseId(courseId);
     }
@@ -115,6 +117,7 @@ public class MarkService {
     // ════════════════════════════════════════════════════
     // GET BY STUDENT + COURSE
     // ════════════════════════════════════════════════════
+    @Transactional(readOnly = true)
     public List<Mark> getByStudentAndCourse(
             String studentId, String courseId) {
         return markRepository.findByStudentIdAndCourseId(
@@ -131,5 +134,15 @@ public class MarkService {
         return avg != null
                 ? Math.round(avg * 10.0) / 10.0
                 : 0.0;
+    }
+
+    @Transactional(readOnly = true)
+    public double getGpaForUser(String email) {
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new RuntimeException("USER_NOT_FOUND"));
+        String studentId = studentRepository.findByUserId(user.getId())
+                .orElseThrow(() -> new RuntimeException("STUDENT_NOT_FOUND"))
+                .getId();
+        return getGpa(studentId);
     }
 }

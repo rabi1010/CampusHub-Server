@@ -3,6 +3,7 @@ package com.example.campus_hub.controller;
 import com.example.campus_hub.dto.ApiResponse;
 import com.example.campus_hub.dto.CreateParentRequest;
 import com.example.campus_hub.dto.UpdateParentRequest;
+import com.example.campus_hub.dto.ParentResponse;
 import com.example.campus_hub.entity.Parent;
 import com.example.campus_hub.service.ParentService;
 import jakarta.validation.Valid;
@@ -27,7 +28,7 @@ public class ParentController {
     // GET /api/parents
     @GetMapping
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<ApiResponse<Page<Parent>>> getAll(
+    public ResponseEntity<ApiResponse<Page<ParentResponse>>> getAll(
         @RequestParam(defaultValue = "1")  int    page,
         @RequestParam(defaultValue = "10") int    size,
         @RequestParam(defaultValue = "")   String search
@@ -43,7 +44,7 @@ public class ParentController {
     // GET /api/parents/:id
     @GetMapping("/{id}")
     @PreAuthorize("hasAnyRole('ADMIN', 'PARENT')")
-    public ResponseEntity<ApiResponse<Parent>> getById(
+    public ResponseEntity<ApiResponse<ParentResponse>> getById(
         @PathVariable String id
     ) {
         try {
@@ -62,12 +63,12 @@ public class ParentController {
     // GET /api/parents/me — parent views own profile
     @GetMapping("/me")
     @PreAuthorize("hasRole('PARENT')")
-    public ResponseEntity<ApiResponse<Parent>> getMe(
+    public ResponseEntity<ApiResponse<ParentResponse>> getMe(
         Authentication auth
     ) {
         try {
             // auth.getName() returns email (set in JwtAuthFilter)
-            Parent parent = parentService.getByUserEmail(auth.getName());
+            ParentResponse parent = parentService.getByUserEmail(auth.getName());
             return ResponseEntity.ok(
                 ApiResponse.success("Profile fetched", parent)
             );
@@ -80,13 +81,13 @@ public class ParentController {
     // POST /api/parents
     @PostMapping
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<ApiResponse<Parent>> create(
+    public ResponseEntity<ApiResponse<ParentResponse>> create(
         @Valid @RequestBody CreateParentRequest request
     ) {
         try {
             Parent parent = parentService.create(request);
             return ResponseEntity.status(HttpStatus.CREATED)
-                .body(ApiResponse.success("Parent created", parent));
+                .body(ApiResponse.success("Parent created", ParentResponse.from(parent)));
         } catch (RuntimeException e) {
             return switch (e.getMessage()) {
                 case "EMAIL_TAKEN" ->
@@ -106,7 +107,7 @@ public class ParentController {
     // PUT /api/parents/:id
     @PutMapping("/{id}")
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<ApiResponse<Parent>> update(
+    public ResponseEntity<ApiResponse<ParentResponse>> update(
         @PathVariable String id,
         @RequestBody  UpdateParentRequest request
     ) {
@@ -114,7 +115,7 @@ public class ParentController {
             return ResponseEntity.ok(
                 ApiResponse.success(
                     "Parent updated",
-                    parentService.update(id, request)
+                    ParentResponse.from(parentService.update(id, request))
                 )
             );
         } catch (RuntimeException e) {
