@@ -3,6 +3,7 @@ package com.example.campus_hub.controller;
 import com.example.campus_hub.dto.ApiResponse;
 import com.example.campus_hub.dto.CreateStudentRequest;
 import com.example.campus_hub.dto.UpdateStudentRequest;
+import com.example.campus_hub.dto.StudentResponse;
 import com.example.campus_hub.entity.Student;
 import com.example.campus_hub.service.StudentService;
 import jakarta.validation.Valid;
@@ -11,6 +12,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -28,13 +30,13 @@ public class StudentController {
     // GET /api/students?page=1&size=10&search=john&departmentId=...
     @GetMapping
     @PreAuthorize("hasAnyRole('ADMIN', 'TEACHER')")
-    public ResponseEntity<ApiResponse<Page<Student>>> getAll(
+    public ResponseEntity<ApiResponse<Page<StudentResponse>>> getAll(
             @RequestParam(defaultValue = "1")  int    page,
             @RequestParam(defaultValue = "10") int    size,
             @RequestParam(defaultValue = "")   String search,
             @RequestParam(required = false)    String departmentId
     ) {
-        Page<Student> students =
+        Page<StudentResponse> students =
                 studentService.getAll(page, size, search, departmentId);
         return ResponseEntity.ok(
                 ApiResponse.success("Students fetched", students)
@@ -56,6 +58,22 @@ public class StudentController {
             if ("STUDENT_NOT_FOUND".equals(e.getMessage())) {
                 return ResponseEntity.status(HttpStatus.NOT_FOUND)
                         .body(ApiResponse.error("Student not found"));
+            }
+            throw e;
+        }
+    }
+
+    // GET /api/students/me - resolve the student record linked to the session user
+    @GetMapping("/me")
+    @PreAuthorize("hasRole('STUDENT')")
+    public ResponseEntity<ApiResponse<Student>> getMe(Authentication authentication) {
+        try {
+            Student student = studentService.getByUserEmail(authentication.getName());
+            return ResponseEntity.ok(ApiResponse.success("Student profile fetched", student));
+        } catch (RuntimeException e) {
+            if ("STUDENT_NOT_FOUND".equals(e.getMessage())) {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                        .body(ApiResponse.error("Student profile not found"));
             }
             throw e;
         }
@@ -176,8 +194,12 @@ public class StudentController {
     public ResponseEntity<byte[]> getImage(@PathVariable String id) {
         try {
             byte[] image = studentService.getImage(id);
+            String contentType = studentService.getImageContentType(id);
+            MediaType mediaType = contentType == null
+                    ? MediaType.IMAGE_JPEG
+                    : MediaType.parseMediaType(contentType);
             return ResponseEntity.ok()
-                    .contentType(MediaType.IMAGE_JPEG)
+                    .contentType(mediaType)
                     .body(image);
         } catch (RuntimeException e) {
             return ResponseEntity.status(

@@ -1,6 +1,7 @@
 package com.example.campus_hub.controller;
 
 import com.example.campus_hub.dto.ApiResponse;
+import com.example.campus_hub.dto.MarkResponse;
 import com.example.campus_hub.dto.UploadMarksRequest;
 import com.example.campus_hub.entity.Mark;
 import com.example.campus_hub.service.MarkService;
@@ -30,14 +31,13 @@ public class MarkController {
     // POST /api/marks — teacher uploads marks
     @PostMapping
     @PreAuthorize("hasAnyRole('ADMIN', 'TEACHER')")
-    public ResponseEntity<ApiResponse<List<Mark>>> upload(
+    public ResponseEntity<ApiResponse<List<MarkResponse>>> upload(
             @Valid @RequestBody UploadMarksRequest request,
             Authentication auth
     ) {
         try {
-            List<Mark> marks = markService.uploadMarks(
-                    request, auth.getName()
-            );
+            List<MarkResponse> marks = markService.uploadMarks(request, auth.getName())
+                    .stream().map(MarkResponse::from).toList();
             return ResponseEntity.status(HttpStatus.CREATED)
                     .body(ApiResponse.success(
                             "Marks uploaded successfully", marks
@@ -68,13 +68,26 @@ public class MarkController {
     // GET /api/marks/student/:id
     @GetMapping("/student/{studentId}")
     @PreAuthorize("hasAnyRole('ADMIN', 'TEACHER', 'STUDENT', 'PARENT')")
-    public ResponseEntity<ApiResponse<List<Mark>>> getByStudent(
+    public ResponseEntity<ApiResponse<List<MarkResponse>>> getByStudent(
             @PathVariable String studentId
     ) {
         return ResponseEntity.ok(
                 ApiResponse.success(
                         "Marks fetched",
-                        markService.getByStudent(studentId)
+                        markService.getByStudent(studentId).stream()
+                                .map(MarkResponse::from).toList()
+                )
+        );
+    }
+
+    // GET /api/marks/gpa — authenticated student views own GPA
+    @GetMapping("/gpa")
+    @PreAuthorize("hasRole('STUDENT')")
+    public ResponseEntity<ApiResponse<Double>> getMyGpa(Authentication auth) {
+        return ResponseEntity.ok(
+                ApiResponse.success(
+                        "GPA fetched",
+                        markService.getGpaForUser(auth.getName())
                 )
         );
     }
@@ -82,13 +95,14 @@ public class MarkController {
     // GET /api/marks/course/:id
     @GetMapping("/course/{courseId}")
     @PreAuthorize("hasAnyRole('ADMIN', 'TEACHER')")
-    public ResponseEntity<ApiResponse<List<Mark>>> getByCourse(
+    public ResponseEntity<ApiResponse<List<MarkResponse>>> getByCourse(
             @PathVariable String courseId
     ) {
         return ResponseEntity.ok(
                 ApiResponse.success(
                         "Marks fetched",
-                        markService.getByCourse(courseId)
+                        markService.getByCourse(courseId).stream()
+                                .map(MarkResponse::from).toList()
                 )
         );
     }
@@ -96,16 +110,15 @@ public class MarkController {
     // GET /api/marks/student/:id/course/:courseId
     @GetMapping("/student/{studentId}/course/{courseId}")
     @PreAuthorize("hasAnyRole('ADMIN', 'TEACHER', 'STUDENT', 'PARENT')")
-    public ResponseEntity<ApiResponse<List<Mark>>> getByStudentAndCourse(
+    public ResponseEntity<ApiResponse<List<MarkResponse>>> getByStudentAndCourse(
             @PathVariable String studentId,
             @PathVariable String courseId
     ) {
         return ResponseEntity.ok(
                 ApiResponse.success(
                         "Marks fetched",
-                        markService.getByStudentAndCourse(
-                                studentId, courseId
-                        )
+                        markService.getByStudentAndCourse(studentId, courseId)
+                                .stream().map(MarkResponse::from).toList()
                 )
         );
     }

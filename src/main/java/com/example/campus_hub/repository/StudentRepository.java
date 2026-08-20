@@ -4,6 +4,7 @@ import com.example.campus_hub.entity.Student;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -19,6 +20,10 @@ public interface StudentRepository
     Optional<Student> findByUserId(String userId);
 
     Optional<Student> findByRollNo(String rollNo);
+
+    @Modifying
+    @Query(value = "DELETE FROM parent_students WHERE student_id = :studentId", nativeQuery = true)
+    void deleteParentLinks(@Param("studentId") String studentId);
 
     // Search across multiple fields with pagination
     // This is a custom JPQL query
