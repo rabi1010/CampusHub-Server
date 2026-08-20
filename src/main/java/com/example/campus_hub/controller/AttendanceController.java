@@ -1,6 +1,7 @@
 package com.example.campus_hub.controller;
 
 import com.example.campus_hub.dto.ApiResponse;
+import com.example.campus_hub.dto.AttendanceResponse;
 import com.example.campus_hub.dto.MarkAttendanceRequest;
 import com.example.campus_hub.entity.Attendance;
 import com.example.campus_hub.service.AttendanceService;
@@ -33,15 +34,14 @@ public class AttendanceController {
     // POST /api/attendance — teacher marks attendance
     @PostMapping
     @PreAuthorize("hasAnyRole('ADMIN', 'TEACHER')")
-    public ResponseEntity<ApiResponse<List<Attendance>>> mark(
+    public ResponseEntity<ApiResponse<List<AttendanceResponse>>> mark(
             @Valid @RequestBody MarkAttendanceRequest request,
             Authentication auth
     ) {
         try {
-            List<Attendance> result =
-                    attendanceService.markAttendance(
-                            request, auth.getName()
-                    );
+            List<AttendanceResponse> result = attendanceService
+                    .markAttendance(request, auth.getName()).stream()
+                    .map(AttendanceResponse::from).toList();
             return ResponseEntity.status(HttpStatus.CREATED)
                     .body(ApiResponse.success(
                             "Attendance marked successfully", result
@@ -72,7 +72,7 @@ public class AttendanceController {
     // GET /api/attendance/course/:id
     @GetMapping("/course/{courseId}")
     @PreAuthorize("hasAnyRole('ADMIN', 'TEACHER')")
-    public ResponseEntity<ApiResponse<Page<Attendance>>> getByCourse(
+    public ResponseEntity<ApiResponse<Page<AttendanceResponse>>> getByCourse(
             @PathVariable String courseId,
             @RequestParam(defaultValue = "1")  int page,
             @RequestParam(defaultValue = "20") int size
@@ -81,6 +81,7 @@ public class AttendanceController {
                 ApiResponse.success(
                         "Attendance fetched",
                         attendanceService.getByCourse(courseId, page, size)
+                                .map(AttendanceResponse::from)
                 )
         );
     }
@@ -88,7 +89,7 @@ public class AttendanceController {
     // GET /api/attendance/student/:id
     @GetMapping("/student/{studentId}")
     @PreAuthorize("hasAnyRole('ADMIN', 'TEACHER', 'STUDENT', 'PARENT')")
-    public ResponseEntity<ApiResponse<Page<Attendance>>> getByStudent(
+    public ResponseEntity<ApiResponse<Page<AttendanceResponse>>> getByStudent(
             @PathVariable String studentId,
             @RequestParam(defaultValue = "1")  int page,
             @RequestParam(defaultValue = "20") int size
@@ -96,9 +97,21 @@ public class AttendanceController {
         return ResponseEntity.ok(
                 ApiResponse.success(
                         "Attendance fetched",
-                        attendanceService.getByStudent(
-                                studentId, page, size
-                        )
+                        attendanceService.getByStudent(studentId, page, size)
+                                .map(AttendanceResponse::from)
+                )
+        );
+    }
+
+    // GET /api/attendance/summary — authenticated student views own summary
+    @GetMapping("/summary")
+    @PreAuthorize("hasRole('STUDENT')")
+    public ResponseEntity<ApiResponse<AttendanceService.AttendanceSummary>>
+    getMySummary(Authentication auth) {
+        return ResponseEntity.ok(
+                ApiResponse.success(
+                        "Summary fetched",
+                        attendanceService.getSummaryForUser(auth.getName())
                 )
         );
     }

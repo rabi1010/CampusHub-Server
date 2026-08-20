@@ -2,6 +2,7 @@ package com.example.campus_hub.service;
 
 import com.example.campus_hub.dto.CreateStudentRequest;
 import com.example.campus_hub.dto.UpdateStudentRequest;
+import com.example.campus_hub.dto.StudentResponse;
 import com.example.campus_hub.entity.Student;
 import com.example.campus_hub.entity.User;
 import com.example.campus_hub.repository.*;
@@ -25,6 +26,8 @@ public class StudentService {
     private final UserRepository       userRepository;
     private final DepartmentRepository departmentRepository;
     private final BatchRepository      batchRepository;
+    private final MarkRepository       markRepository;
+    private final AttendanceRepository attendanceRepository;
     private final PasswordEncoder      passwordEncoder;
     private final EmailService emailService;
 
@@ -35,7 +38,9 @@ public class StudentService {
             DepartmentRepository departmentRepository,
             BatchRepository      batchRepository,
             PasswordEncoder      passwordEncoder,
-             EmailService         emailService
+            EmailService         emailService,
+            MarkRepository       markRepository,
+            AttendanceRepository attendanceRepository
     ) {
         this.studentRepository    = studentRepository;
         this.userRepository       = userRepository;
@@ -43,12 +48,15 @@ public class StudentService {
         this.batchRepository      = batchRepository;
         this.passwordEncoder      = passwordEncoder;
         this.emailService         = emailService;
+        this.markRepository       = markRepository;
+        this.attendanceRepository = attendanceRepository;
     }
 
     // ════════════════════════════════════════════════════
     // GET ALL with search and pagination
     // ════════════════════════════════════════════════════
-    public Page<Student> getAll(
+    @Transactional(readOnly = true)
+    public Page<StudentResponse> getAll(
             int    page,
             int    size,
             String search,
@@ -67,7 +75,7 @@ public class StudentService {
                 search,
                 departmentId,
                 pageable
-        );
+        ).map(StudentResponse::from);
     }
 
     // ════════════════════════════════════════════════════
@@ -78,6 +86,15 @@ public class StudentService {
                 .orElseThrow(() ->
                         new RuntimeException("STUDENT_NOT_FOUND")
                 );
+    }
+
+    @Transactional(readOnly = true)
+    public Student getByUserEmail(String email) {
+        return studentRepository.findByUserId(
+                        userRepository.findByEmail(email)
+                                .orElseThrow(() -> new RuntimeException("STUDENT_NOT_FOUND"))
+                                .getId())
+                .orElseThrow(() -> new RuntimeException("STUDENT_NOT_FOUND"));
     }
 
     // ════════════════════════════════════════════════════
@@ -192,12 +209,10 @@ public class StudentService {
         Student student = studentRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("STUDENT_NOT_FOUND"));
 
-        // Delete the User — cascade will delete Student
-        // Just like Node.js: delete User → Student auto-deleted
-        // This requires @OneToOne(cascade = CascadeType.ALL)
-        // on the User side — we will add that next
+        studentRepository.deleteParentLinks(id);
+        markRepository.deleteByStudentId(id);
+        attendanceRepository.deleteByStudentId(id);
         studentRepository.delete(student);
-        userRepository.delete(student.getUser());
     }
 
     // ════════════════════════════════════════════════════
@@ -229,6 +244,7 @@ public class StudentService {
             // This is stored in the profileImage BLOB column
             byte[] imageBytes = file.getBytes();
             student.getUser().setProfileImage(imageBytes);
+            student.getUser().setProfileImageContentType(file.getContentType());
             userRepository.save(student.getUser());
         } catch (IOException e) {
             throw new RuntimeException("IMAGE_UPLOAD_FAILED");
@@ -248,6 +264,15 @@ public class StudentService {
         }
 
         return image;
+    }
+
+    public String getImageContentType(String id) {
+        Student student = studentRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("STUDENT_NOT_FOUND"));
+        if (student.getUser().getProfileImage() == null) {
+            throw new RuntimeException("IMAGE_NOT_FOUND");
+        }
+        return student.getUser().getProfileImageContentType();
     }
 
 
