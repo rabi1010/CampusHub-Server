@@ -32,5 +32,8 @@ build/
 ### VS Code ###
 .vscode/
 
+### Environment variables ###
+.env
+
 ### Spring Boot ###
 src/main/resources/application.properties

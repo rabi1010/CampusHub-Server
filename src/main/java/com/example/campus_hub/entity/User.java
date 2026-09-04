@@ -22,12 +22,17 @@ public class User {
     public enum Status {
         ACTIVE, PENDING, SUSPENDED
     }
-    // Add profileImage field
+    // Keep the URL in Neon; image bytes are stored by Cloudinary.
+    @JsonIgnore
     @Column(name = "profile_image", columnDefinition = "bytea")
     private byte[] profileImage;
 
+    @JsonIgnore
     @Column(name = "profile_image_content_type")
     private String profileImageContentType;
+
+    @Column(name = "profile_image_url", length = 2048)
+    private String profileImageUrl;
 
     // Add getter and setter
     public byte[] getProfileImage()              { return profileImage; }
