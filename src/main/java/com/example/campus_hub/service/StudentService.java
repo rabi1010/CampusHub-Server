@@ -3,6 +3,8 @@ package com.example.campus_hub.service;
 import com.example.campus_hub.dto.CreateStudentRequest;
 import com.example.campus_hub.dto.UpdateStudentRequest;
 import com.example.campus_hub.dto.StudentResponse;
+import com.cloudinary.Cloudinary;
+import com.cloudinary.utils.ObjectUtils;
 import com.example.campus_hub.entity.Student;
 import com.example.campus_hub.entity.User;
 import com.example.campus_hub.repository.*;
@@ -30,6 +32,7 @@ public class StudentService {
     private final AttendanceRepository attendanceRepository;
     private final PasswordEncoder      passwordEncoder;
     private final EmailService emailService;
+    private final Cloudinary cloudinary;
 
     // Constructor injection — no Lombok @RequiredArgsConstructor
     public StudentService(
@@ -40,7 +43,8 @@ public class StudentService {
             PasswordEncoder      passwordEncoder,
             EmailService         emailService,
             MarkRepository       markRepository,
-            AttendanceRepository attendanceRepository
+            AttendanceRepository attendanceRepository,
+            Cloudinary            cloudinary
     ) {
         this.studentRepository    = studentRepository;
         this.userRepository       = userRepository;
@@ -50,6 +54,7 @@ public class StudentService {
         this.emailService         = emailService;
         this.markRepository       = markRepository;
         this.attendanceRepository = attendanceRepository;
+        this.cloudinary            = cloudinary;
     }
 
     // ════════════════════════════════════════════════════
@@ -222,6 +227,10 @@ public class StudentService {
     @Transactional
     public void uploadImage(String id, MultipartFile file) {
 
+        if (file == null || file.isEmpty()) {
+            throw new RuntimeException("IMAGE_UPLOAD_FAILED");
+        }
+
         // Validate file type
         List<String> allowed = Arrays.asList(
                 "image/jpeg", "image/png", "image/webp"
@@ -240,13 +249,21 @@ public class StudentService {
                 .orElseThrow(() -> new RuntimeException("STUDENT_NOT_FOUND"));
 
         try {
-            // file.getBytes() reads the raw binary data
-            // This is stored in the profileImage BLOB column
-            byte[] imageBytes = file.getBytes();
-            student.getUser().setProfileImage(imageBytes);
+            var result = cloudinary.uploader().upload(
+                    file.getBytes(),
+                    ObjectUtils.asMap(
+                            "folder", "campus-hub/profile-images",
+                            "public_id", student.getUser().getId(),
+                            "overwrite", true,
+                            "resource_type", "image"
+                    )
+            );
+            student.getUser().setProfileImageUrl((String) result.get("secure_url"));
+            student.getUser().setProfileImage(null);
             student.getUser().setProfileImageContentType(file.getContentType());
             userRepository.save(student.getUser());
-        } catch (IOException e) {
+        } catch (Exception e) {
+            System.err.println("Student image upload failed: " + e.getMessage());
             throw new RuntimeException("IMAGE_UPLOAD_FAILED");
         }
     }
@@ -264,6 +281,12 @@ public class StudentService {
         }
 
         return image;
+    }
+
+    public String getImageUrl(String id) {
+        Student student = studentRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("STUDENT_NOT_FOUND"));
+        return student.getUser().getProfileImageUrl();
     }
 
     public String getImageContentType(String id) {
