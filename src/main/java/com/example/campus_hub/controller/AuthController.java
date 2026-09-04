@@ -7,9 +7,11 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.http.MediaType;
+import org.springframework.web.multipart.MultipartFile;
+import org.springframework.security.access.prepost.PreAuthorize;
 
 import java.util.List;
 
@@ -110,6 +112,72 @@ public class AuthController {
         return ResponseEntity.ok(
                 ApiResponse.success("User fetched", user)
         );
+    }
+
+    @PutMapping("/me")
+    public ResponseEntity<ApiResponse<User>> updateMe(
+            Authentication auth, @RequestBody UpdateProfileRequest request) {
+        try {
+            return ResponseEntity.ok(ApiResponse.success(
+                    "Profile updated", authService.updateProfile(auth.getName(), request)));
+        } catch (RuntimeException e) {
+            if ("EMAIL_TAKEN".equals(e.getMessage())) {
+                return ResponseEntity.status(HttpStatus.CONFLICT)
+                        .body(ApiResponse.error("This email is already registered"));
+            }
+            throw e;
+        }
+    }
+
+    @PatchMapping("/me/password")
+    public ResponseEntity<ApiResponse<Object>> changePassword(
+            Authentication auth, @RequestBody ChangePasswordRequest request) {
+        try {
+            authService.changePassword(auth.getName(), request);
+            return ResponseEntity.ok(ApiResponse.success("Password updated", null));
+        } catch (RuntimeException e) {
+            return switch (e.getMessage()) {
+                case "INVALID_CURRENT_PASSWORD" -> ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                        .body(ApiResponse.error("Current password is incorrect"));
+                case "PASSWORD_TOO_SHORT" -> ResponseEntity.badRequest()
+                        .body(ApiResponse.error("New password must be at least 8 characters"));
+                default -> throw e;
+            };
+        }
+    }
+
+    @PutMapping(value = "/me/image", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<ApiResponse<Object>> updateProfileImage(
+            Authentication auth, @RequestParam("image") MultipartFile file) {
+        try {
+            authService.updateProfileImage(auth.getName(), file);
+            return ResponseEntity.ok(ApiResponse.success("Profile image updated", null));
+        } catch (RuntimeException e) {
+            return switch (e.getMessage()) {
+                case "INVALID_IMAGE_TYPE" -> ResponseEntity.badRequest()
+                        .body(ApiResponse.error("Only JPEG, PNG, WebP allowed"));
+                case "IMAGE_TOO_LARGE" -> ResponseEntity.badRequest()
+                        .body(ApiResponse.error("Image must be under 2MB"));
+                case "IMAGE_UPLOAD_FAILED" -> ResponseEntity.status(HttpStatus.BAD_GATEWAY)
+                        .body(ApiResponse.error("Image storage service failed. Check the backend logs."));
+                default -> throw e;
+            };
+        }
+    }
+
+    @GetMapping(value = "/me/image", produces = MediaType.APPLICATION_JSON_VALUE)
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<?> getProfileImage(Authentication auth) {
+        try {
+            String imageUrl = authService.getProfileImageUrl(auth.getName());
+            if (imageUrl == null || imageUrl.isBlank()) {
+                return ResponseEntity.notFound().build();
+            }
+            return ResponseEntity.ok(ApiResponse.success("Profile image URL fetched", imageUrl));
+        } catch (RuntimeException e) {
+            return ResponseEntity.notFound().build();
+        }
     }
     // GET /api/users/pending
     @GetMapping("/users/pending")

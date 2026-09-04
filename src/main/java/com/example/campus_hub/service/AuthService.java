@@ -8,15 +8,23 @@ import com.example.campus_hub.repository.TeacherRepository;
 import com.example.campus_hub.entity.User;
 import com.example.campus_hub.repository.*;
 import com.example.campus_hub.security.JwtUtil;
+import com.cloudinary.Cloudinary;
+import com.cloudinary.utils.ObjectUtils;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
+import java.util.Arrays;
 
 import java.util.ArrayList;
 import java.util.List;
 
 @Service
 public class AuthService {
+
+    private static final Logger log = LoggerFactory.getLogger(AuthService.class);
 
     private final UserRepository userRepository;
     private final StudentRepository studentRepository;
@@ -27,6 +35,7 @@ public class AuthService {
     private final PasswordEncoder passwordEncoder;
     private final JwtUtil jwtUtil;
     private final EmailService emailService;
+    private final Cloudinary cloudinary;
 
     public AuthService(
             UserRepository       userRepository,
@@ -37,7 +46,8 @@ public class AuthService {
             BatchRepository      batchRepository,
             PasswordEncoder      passwordEncoder,
             JwtUtil              jwtUtil,
-            EmailService         emailService
+            EmailService         emailService,
+            Cloudinary            cloudinary
     ) {
         this.userRepository       = userRepository;
         this.studentRepository    = studentRepository;
@@ -48,6 +58,7 @@ public class AuthService {
         this.passwordEncoder      = passwordEncoder;
         this.jwtUtil              = jwtUtil;
         this.emailService         = emailService;
+        this.cloudinary            = cloudinary;
     }
 
     // ── Register ─────────────────────────────────────────
@@ -139,6 +150,81 @@ public class AuthService {
                 .orElseThrow(() ->
                         new RuntimeException("USER_NOT_FOUND")
                 );
+    }
+
+    @Transactional
+    public User updateProfile(String email, UpdateProfileRequest request) {
+        User user = me(email);
+        if (request.getFullName() != null && !request.getFullName().isBlank()) {
+            user.setFullName(request.getFullName().trim());
+        }
+        if (request.getEmail() != null && !request.getEmail().isBlank()
+                && !request.getEmail().equalsIgnoreCase(user.getEmail())) {
+            if (userRepository.existsByEmail(request.getEmail())) {
+                throw new RuntimeException("EMAIL_TAKEN");
+            }
+            user.setEmail(request.getEmail().trim());
+        }
+        if (request.getPhone() != null) user.setPhone(request.getPhone().trim());
+        return userRepository.save(user);
+    }
+
+    @Transactional
+    public void changePassword(String email, ChangePasswordRequest request) {
+        User user = me(email);
+        if (request.getCurrentPassword() == null || request.getNewPassword() == null
+                || !passwordEncoder.matches(request.getCurrentPassword(), user.getPassword())) {
+            throw new RuntimeException("INVALID_CURRENT_PASSWORD");
+        }
+        if (request.getNewPassword().length() < 8) {
+            throw new RuntimeException("PASSWORD_TOO_SHORT");
+        }
+        user.setPassword(passwordEncoder.encode(request.getNewPassword()));
+        userRepository.save(user);
+    }
+
+    @Transactional
+    public void updateProfileImage(String email, MultipartFile file) {
+        if (file == null || file.isEmpty()) throw new RuntimeException("IMAGE_UPLOAD_FAILED");
+        if (!Arrays.asList("image/jpeg", "image/png", "image/webp").contains(file.getContentType())) {
+            throw new RuntimeException("INVALID_IMAGE_TYPE");
+        }
+        if (file.getSize() > 2 * 1024 * 1024) throw new RuntimeException("IMAGE_TOO_LARGE");
+        try {
+            User user = me(email);
+            var result = cloudinary.uploader().upload(
+                    file.getBytes(),
+                    ObjectUtils.asMap(
+                            "folder", "campus-hub/profile-images",
+                            "public_id", user.getId(),
+                            "overwrite", true,
+                            "resource_type", "image"
+                    )
+            );
+            user.setProfileImageUrl((String) result.get("secure_url"));
+            // Clear legacy BLOB data so Neon is not used for new uploads.
+            user.setProfileImage(null);
+            user.setProfileImageContentType(file.getContentType());
+            userRepository.save(user);
+        } catch (Exception e) {
+            log.error("Profile image upload failed for user {}", email, e);
+            throw new RuntimeException("IMAGE_UPLOAD_FAILED");
+        }
+    }
+
+    public String getProfileImageUrl(String email) {
+        return me(email).getProfileImageUrl();
+    }
+
+    public byte[] getProfileImage(String email) {
+        byte[] image = me(email).getProfileImage();
+        if (image == null) throw new RuntimeException("IMAGE_NOT_FOUND");
+        return image;
+    }
+
+    public String getProfileImageContentType(String email) {
+        String contentType = me(email).getProfileImageContentType();
+        return contentType == null ? "image/jpeg" : contentType;
     }
 
     // ── List users awaiting admin approval ────────────────

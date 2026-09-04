@@ -184,23 +184,16 @@ public class StudentController {
         }
     }
 
-    // GET /api/students/:id/image
-    // produces = IMAGE_JPEG_VALUE — tells Spring the response is binary image
-    @GetMapping(
-            value    = "/{id}/image",
-            produces = MediaType.IMAGE_JPEG_VALUE
-    )
+    // GET /api/students/:id/image returns the Cloudinary URL.
+    @GetMapping(value = "/{id}/image", produces = MediaType.APPLICATION_JSON_VALUE)
     @PreAuthorize("hasAnyRole('ADMIN', 'TEACHER', 'STUDENT')")
-    public ResponseEntity<byte[]> getImage(@PathVariable String id) {
+    public ResponseEntity<?> getImage(@PathVariable String id) {
         try {
-            byte[] image = studentService.getImage(id);
-            String contentType = studentService.getImageContentType(id);
-            MediaType mediaType = contentType == null
-                    ? MediaType.IMAGE_JPEG
-                    : MediaType.parseMediaType(contentType);
-            return ResponseEntity.ok()
-                    .contentType(mediaType)
-                    .body(image);
+            String imageUrl = studentService.getImageUrl(id);
+            if (imageUrl == null || imageUrl.isBlank()) {
+                return ResponseEntity.notFound().build();
+            }
+            return ResponseEntity.ok(ApiResponse.success("Student image URL fetched", imageUrl));
         } catch (RuntimeException e) {
             return ResponseEntity.status(
                     "IMAGE_NOT_FOUND".equals(e.getMessage())
