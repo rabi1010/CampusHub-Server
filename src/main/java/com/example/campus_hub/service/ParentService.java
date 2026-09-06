@@ -3,6 +3,8 @@ package com.example.campus_hub.service;
 import com.example.campus_hub.dto.CreateParentRequest;
 import com.example.campus_hub.dto.UpdateParentRequest;
 import com.example.campus_hub.dto.ParentResponse;
+import com.cloudinary.Cloudinary;
+import com.cloudinary.utils.ObjectUtils;
 import com.example.campus_hub.entity.Parent;
 import com.example.campus_hub.entity.Student;
 import com.example.campus_hub.entity.User;
@@ -16,6 +18,7 @@ import org.springframework.data.domain.Sort;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -28,19 +31,22 @@ public class ParentService {
     private final StudentRepository studentRepository;
     private final PasswordEncoder   passwordEncoder;
     private final EmailService      emailService;
+    private final Cloudinary         cloudinary;
 
     public ParentService(
         ParentRepository  parentRepository,
         UserRepository    userRepository,
         StudentRepository studentRepository,
         PasswordEncoder   passwordEncoder,
-        EmailService      emailService
+        EmailService      emailService,
+        Cloudinary        cloudinary
     ) {
         this.parentRepository  = parentRepository;
         this.userRepository    = userRepository;
         this.studentRepository = studentRepository;
         this.passwordEncoder   = passwordEncoder;
         this.emailService      = emailService;
+        this.cloudinary        = cloudinary;
     }
 
     // ════════════════════════════════════════════════════
@@ -85,6 +91,41 @@ public class ParentService {
         Parent parent = parentRepository.findByUserId(user.getId())
             .orElseThrow(() -> new RuntimeException("PARENT_NOT_FOUND"));
         return ParentResponse.from(parent);
+    }
+
+    @Transactional
+    public void uploadImage(String id, MultipartFile file) {
+        validateImage(file);
+        Parent parent = parentRepository.findById(id)
+            .orElseThrow(() -> new RuntimeException("PARENT_NOT_FOUND"));
+        try {
+            var result = cloudinary.uploader().upload(file.getBytes(), ObjectUtils.asMap(
+                "folder", "campus-hub/profile-images",
+                "public_id", parent.getUser().getId(),
+                "overwrite", true,
+                "resource_type", "image"
+            ));
+            parent.getUser().setProfileImageUrl((String) result.get("secure_url"));
+            parent.getUser().setProfileImage(null);
+            parent.getUser().setProfileImageContentType(file.getContentType());
+            userRepository.save(parent.getUser());
+        } catch (Exception e) {
+            throw new RuntimeException("IMAGE_UPLOAD_FAILED");
+        }
+    }
+
+    public String getImageUrl(String id) {
+        Parent parent = parentRepository.findById(id)
+            .orElseThrow(() -> new RuntimeException("PARENT_NOT_FOUND"));
+        return parent.getUser().getProfileImageUrl();
+    }
+
+    private void validateImage(MultipartFile file) {
+        if (file == null || file.isEmpty()) throw new RuntimeException("IMAGE_UPLOAD_FAILED");
+        if (!List.of("image/jpeg", "image/png", "image/webp").contains(file.getContentType())) {
+            throw new RuntimeException("INVALID_IMAGE_TYPE");
+        }
+        if (file.getSize() > 2 * 1024 * 1024) throw new RuntimeException("IMAGE_TOO_LARGE");
     }
 
     // ════════════════════════════════════════════════════
