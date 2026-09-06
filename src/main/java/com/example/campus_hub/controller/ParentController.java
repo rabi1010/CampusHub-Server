@@ -9,10 +9,12 @@ import com.example.campus_hub.service.ParentService;
 import jakarta.validation.Valid;
 import org.springframework.data.domain.Page;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 @RestController
 @RequestMapping("/api/parents")
@@ -75,6 +77,40 @@ public class ParentController {
         } catch (RuntimeException e) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND)
                 .body(ApiResponse.error("Parent profile not found"));
+        }
+    }
+
+    @PostMapping(value = "/{id}/image", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @PreAuthorize("hasAnyRole('ADMIN', 'PARENT')")
+    public ResponseEntity<ApiResponse<Object>> uploadImage(
+        @PathVariable String id, @RequestParam("image") MultipartFile file
+    ) {
+        try {
+            parentService.uploadImage(id, file);
+            return ResponseEntity.ok(ApiResponse.success("Image uploaded", null));
+        } catch (RuntimeException e) {
+            return switch (e.getMessage()) {
+                case "PARENT_NOT_FOUND" -> ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiResponse.error("Parent not found"));
+                case "INVALID_IMAGE_TYPE" -> ResponseEntity.badRequest().body(ApiResponse.error("Only JPEG, PNG, WebP allowed"));
+                case "IMAGE_TOO_LARGE" -> ResponseEntity.badRequest().body(ApiResponse.error("Image must be under 2MB"));
+                case "IMAGE_UPLOAD_FAILED" -> ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(ApiResponse.error("Upload failed"));
+                default -> throw e;
+            };
+        }
+    }
+
+    @GetMapping(value = "/{id}/image", produces = MediaType.APPLICATION_JSON_VALUE)
+    @PreAuthorize("hasAnyRole('ADMIN', 'PARENT')")
+    public ResponseEntity<?> getImage(@PathVariable String id) {
+        try {
+            String imageUrl = parentService.getImageUrl(id);
+            return imageUrl == null || imageUrl.isBlank()
+                ? ResponseEntity.notFound().build()
+                : ResponseEntity.ok(ApiResponse.success("Parent image URL fetched", imageUrl));
+        } catch (RuntimeException e) {
+            return "PARENT_NOT_FOUND".equals(e.getMessage())
+                ? ResponseEntity.notFound().build()
+                : ResponseEntity.internalServerError().build();
         }
     }
 
