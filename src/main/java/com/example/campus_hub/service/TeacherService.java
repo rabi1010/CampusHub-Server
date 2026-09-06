@@ -2,6 +2,8 @@ package com.example.campus_hub.service;
 
 import com.example.campus_hub.dto.CreateTeacherRequest;
 import com.example.campus_hub.dto.UpdateTeacherRequest;
+import com.cloudinary.Cloudinary;
+import com.cloudinary.utils.ObjectUtils;
 import com.example.campus_hub.entity.Teacher;
 import com.example.campus_hub.entity.User;
 import com.example.campus_hub.repository.DepartmentRepository;
@@ -17,6 +19,9 @@ import org.springframework.data.domain.Sort;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
+
+import java.util.List;
 
 @Service
 public class TeacherService {
@@ -29,6 +34,7 @@ public class TeacherService {
     private final MarkRepository       markRepository;
     private final AttendanceRepository attendanceRepository;
     private final NoticeRepository     noticeRepository;
+    private final Cloudinary           cloudinary;
 
     public TeacherService(
             TeacherRepository    teacherRepository,
@@ -38,7 +44,8 @@ public class TeacherService {
             EmailService         emailService,
             MarkRepository       markRepository,
             AttendanceRepository attendanceRepository,
-            NoticeRepository     noticeRepository
+            NoticeRepository     noticeRepository,
+            Cloudinary           cloudinary
     ) {
         this.teacherRepository    = teacherRepository;
         this.userRepository       = userRepository;
@@ -48,6 +55,7 @@ public class TeacherService {
         this.markRepository       = markRepository;
         this.attendanceRepository = attendanceRepository;
         this.noticeRepository     = noticeRepository;
+        this.cloudinary           = cloudinary;
     }
 
     // ════════════════════════════════════════════════════
@@ -169,6 +177,49 @@ public class TeacherService {
         }
 
         return teacherRepository.save(teacher);
+    }
+
+    @Transactional(readOnly = true)
+    public Teacher getByUserEmail(String email) {
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new RuntimeException("USER_NOT_FOUND"));
+        return teacherRepository.findByUserId(user.getId())
+                .orElseThrow(() -> new RuntimeException("TEACHER_NOT_FOUND"));
+    }
+
+    @Transactional
+    public void uploadImage(String id, MultipartFile file) {
+        validateImage(file);
+        Teacher teacher = teacherRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("TEACHER_NOT_FOUND"));
+        try {
+            var result = cloudinary.uploader().upload(file.getBytes(), ObjectUtils.asMap(
+                    "folder", "campus-hub/profile-images",
+                    "public_id", teacher.getUser().getId(),
+                    "overwrite", true,
+                    "resource_type", "image"
+            ));
+            teacher.getUser().setProfileImageUrl((String) result.get("secure_url"));
+            teacher.getUser().setProfileImage(null);
+            teacher.getUser().setProfileImageContentType(file.getContentType());
+            userRepository.save(teacher.getUser());
+        } catch (Exception e) {
+            throw new RuntimeException("IMAGE_UPLOAD_FAILED");
+        }
+    }
+
+    public String getImageUrl(String id) {
+        Teacher teacher = teacherRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("TEACHER_NOT_FOUND"));
+        return teacher.getUser().getProfileImageUrl();
+    }
+
+    private void validateImage(MultipartFile file) {
+        if (file == null || file.isEmpty()) throw new RuntimeException("IMAGE_UPLOAD_FAILED");
+        if (!List.of("image/jpeg", "image/png", "image/webp").contains(file.getContentType())) {
+            throw new RuntimeException("INVALID_IMAGE_TYPE");
+        }
+        if (file.getSize() > 2 * 1024 * 1024) throw new RuntimeException("IMAGE_TOO_LARGE");
     }
 
     // ════════════════════════════════════════════════════
