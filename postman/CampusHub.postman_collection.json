@@ -1,0 +1,119 @@
+{
+  "info": {
+    "name": "CampusHub API - Complete Endpoint Tests",
+    "description": "All 57 implemented CampusHub controller endpoints. Select the CampusHub Local environment before running. Run requests in folder order and save IDs from response bodies into environment variables.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [{ "key": "baseUrl", "value": "http://localhost:8080/api" }],
+  "item": [
+    {
+      "name": "01 Authentication",
+      "item": [
+        { "name": "Register student (public)", "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"fullName\": \"Postman Student\",\n  \"email\": \"{{studentEmail}}\",\n  \"phone\": \"9800000001\",\n  \"password\": \"{{studentPassword}}\",\n  \"role\": \"STUDENT\"\n}" }, "url": "{{baseUrl}}/auth/register" } },
+        { "name": "Register teacher (public)", "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"fullName\": \"Postman Teacher\",\n  \"email\": \"{{teacherEmail}}\",\n  \"phone\": \"9800000002\",\n  \"password\": \"{{teacherPassword}}\",\n  \"role\": \"TEACHER\"\n}" }, "url": "{{baseUrl}}/auth/register" } },
+        { "name": "Register parent (public)", "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"fullName\": \"Postman Parent\",\n  \"email\": \"{{parentEmail}}\",\n  \"phone\": \"9800000003\",\n  \"password\": \"{{parentPassword}}\",\n  \"role\": \"PARENT\",\n  \"childRollNumbers\": [\"ROLL-001\"]\n}" }, "url": "{{baseUrl}}/auth/register" } },
+        { "name": "Login admin", "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\"email\":\"{{adminEmail}}\",\"password\":\"{{adminPassword}}\"}" }, "url": "{{baseUrl}}/auth/login" }, "event": [{ "listen": "test", "script": { "exec": ["const j = pm.response.json();", "if (j.data && j.data.token) pm.environment.set('token', j.data.token);"] } }] },
+        { "name": "Get pending users", "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }], "url": "{{baseUrl}}/auth/users/pending" } },
+        { "name": "Approve user", "request": { "method": "PATCH", "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }, { "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"role\": \"STUDENT\",\n  \"rollNo\": \"ROLL-001\",\n  \"departmentId\": \"{{departmentId}}\",\n  \"batchId\": \"{{batchId}}\",\n  \"address\": \"Kathmandu\"\n}" }, "url": "{{baseUrl}}/auth/users/{{pendingUserId}}/approve" } },
+        { "name": "Get current user", "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }], "url": "{{baseUrl}}/auth/me" } },
+        { "name": "Update current profile", "request": { "method": "PUT", "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }, { "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\"fullName\":\"Updated Name\",\"email\":\"{{adminEmail}}\",\"phone\":\"9800000099\"}" }, "url": "{{baseUrl}}/auth/me" } },
+        { "name": "Change current password", "request": { "method": "PATCH", "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }, { "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\"currentPassword\":\"{{adminPassword}}\",\"newPassword\":\"admin1234\"}" }, "url": "{{baseUrl}}/auth/me/password" } },
+        { "name": "Upload current profile image", "request": { "method": "PUT", "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }], "body": { "mode": "formdata", "formdata": [{ "key": "image", "type": "file", "src": "{{imagePath}}" }] }, "url": "{{baseUrl}}/auth/me/image" } },
+        { "name": "Get current profile image", "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }], "url": "{{baseUrl}}/auth/me/image" } },
+        { "name": "Logout", "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }], "url": "{{baseUrl}}/auth/logout" } }
+      ]
+    },
+    {
+      "name": "02 Academic Data",
+      "item": [
+        { "name": "List departments", "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }], "url": "{{baseUrl}}/departments" } },
+        { "name": "List batches", "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }], "url": "{{baseUrl}}/batches" } }
+      ]
+    },
+    {
+      "name": "03 Students",
+      "item": [
+        { "name": "List students", "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }], "url": "{{baseUrl}}/students?page=1&size=10&search=&departmentId=" } },
+        { "name": "Get student", "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }], "url": "{{baseUrl}}/students/{{studentId}}" } },
+        { "name": "Get logged-in student", "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }], "url": "{{baseUrl}}/students/me" } },
+        { "name": "Create student", "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }, { "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\"fullName\":\"Created Student\",\"email\":\"created.student@example.com\",\"phone\":\"9800000011\",\"password\":\"test123\",\"rollNo\":\"ROLL-002\",\"departmentId\":\"{{departmentId}}\",\"batchId\":\"{{batchId}}\",\"address\":\"Kathmandu\"}" }, "url": "{{baseUrl}}/students" } },
+        { "name": "Update student", "request": { "method": "PUT", "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }, { "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\"fullName\":\"Updated Student\",\"phone\":\"9800000012\",\"address\":\"Lalitpur\"}" }, "url": "{{baseUrl}}/students/{{studentId}}" } },
+        { "name": "Upload student image", "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }], "body": { "mode": "formdata", "formdata": [{ "key": "image", "type": "file", "src": "{{imagePath}}" }] }, "url": "{{baseUrl}}/students/{{studentId}}/image" } },
+        { "name": "Get student image", "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }], "url": "{{baseUrl}}/students/{{studentId}}/image" } },
+        { "name": "Delete student", "request": { "method": "DELETE", "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }], "url": "{{baseUrl}}/students/{{studentId}}" } }
+      ]
+    },
+    {
+      "name": "04 Teachers",
+      "item": [
+        { "name": "List teachers", "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }], "url": "{{baseUrl}}/teachers?page=1&size=10&search=&departmentId=" } },
+        { "name": "Get teacher", "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }], "url": "{{baseUrl}}/teachers/{{teacherId}}" } },
+        { "name": "Get logged-in teacher", "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }], "url": "{{baseUrl}}/teachers/me" } },
+        { "name": "Create teacher", "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }, { "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\"fullName\":\"Created Teacher\",\"email\":\"created.teacher@example.com\",\"password\":\"test123\",\"phone\":\"9800000021\",\"employeeId\":\"EMP-002\",\"departmentId\":\"{{departmentId}}\",\"qualification\":\"MSc CS\"}" }, "url": "{{baseUrl}}/teachers" } },
+        { "name": "Update teacher", "request": { "method": "PUT", "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }, { "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\"fullName\":\"Updated Teacher\",\"phone\":\"9800000022\",\"qualification\":\"MSc IT\"}" }, "url": "{{baseUrl}}/teachers/{{teacherId}}" } },
+        { "name": "Upload teacher image", "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }], "body": { "mode": "formdata", "formdata": [{ "key": "image", "type": "file", "src": "{{imagePath}}" }] }, "url": "{{baseUrl}}/teachers/{{teacherId}}/image" } },
+        { "name": "Get teacher image", "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }], "url": "{{baseUrl}}/teachers/{{teacherId}}/image" } },
+        { "name": "Delete teacher", "request": { "method": "DELETE", "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }], "url": "{{baseUrl}}/teachers/{{teacherId}}" } }
+      ]
+    },
+    {
+      "name": "05 Parents",
+      "item": [
+        { "name": "List parents", "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }], "url": "{{baseUrl}}/parents?page=1&size=10&search=" } },
+        { "name": "Get parent", "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }], "url": "{{baseUrl}}/parents/{{parentId}}" } },
+        { "name": "Get logged-in parent", "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }], "url": "{{baseUrl}}/parents/me" } },
+        { "name": "Create parent", "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }, { "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\"fullName\":\"Created Parent\",\"email\":\"created.parent@example.com\",\"password\":\"test123\",\"phone\":\"9800000031\",\"relationship\":\"Father\",\"studentIds\":[\"{{studentId}}\"]}" }, "url": "{{baseUrl}}/parents" } },
+        { "name": "Update parent", "request": { "method": "PUT", "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }, { "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\"fullName\":\"Updated Parent\",\"phone\":\"9800000032\",\"relationship\":\"Guardian\",\"studentIds\":[\"{{studentId}}\"]}" }, "url": "{{baseUrl}}/parents/{{parentId}}" } },
+        { "name": "Upload parent image", "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }], "body": { "mode": "formdata", "formdata": [{ "key": "image", "type": "file", "src": "{{imagePath}}" }] }, "url": "{{baseUrl}}/parents/{{parentId}}/image" } },
+        { "name": "Get parent image", "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }], "url": "{{baseUrl}}/parents/{{parentId}}/image" } },
+        { "name": "Delete parent", "request": { "method": "DELETE", "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }], "url": "{{baseUrl}}/parents/{{parentId}}" } }
+      ]
+    },
+    {
+      "name": "06 Courses",
+      "item": [
+        { "name": "List courses", "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }], "url": "{{baseUrl}}/courses?page=1&size=10&search=&departmentId=&semester=0" } },
+        { "name": "Get course", "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }], "url": "{{baseUrl}}/courses/{{courseId}}" } },
+        { "name": "Create course", "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }, { "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\"name\":\"Postman Programming\",\"code\":\"PST-101\",\"departmentId\":\"{{departmentId}}\",\"credits\":3,\"semester\":4,\"description\":\"API test course\"}" }, "url": "{{baseUrl}}/courses" } },
+        { "name": "Update course", "request": { "method": "PUT", "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }, { "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\"name\":\"Updated Programming\",\"credits\":4,\"semester\":4,\"description\":\"Updated description\"}" }, "url": "{{baseUrl}}/courses/{{courseId}}" } },
+        { "name": "Delete course", "request": { "method": "DELETE", "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }], "url": "{{baseUrl}}/courses/{{courseId}}" } }
+      ]
+    },
+    {
+      "name": "07 Notices",
+      "item": [
+        { "name": "List notices", "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }], "url": "{{baseUrl}}/notices?page=1&size=10&search=" } },
+        { "name": "Get notice", "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }], "url": "{{baseUrl}}/notices/{{noticeId}}" } },
+        { "name": "Create notice", "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }, { "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\"title\":\"Postman Notice\",\"content\":\"This notice was created from Postman.\",\"forRole\":\"ALL\",\"urgent\":false}" }, "url": "{{baseUrl}}/notices" } },
+        { "name": "Delete notice", "request": { "method": "DELETE", "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }], "url": "{{baseUrl}}/notices/{{noticeId}}" } }
+      ]
+    },
+    {
+      "name": "08 Attendance",
+      "item": [
+        { "name": "Mark attendance", "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }, { "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"courseId\": \"{{courseId}}\",\n  \"date\": \"2026-09-09\",\n  \"records\": [\n    { \"studentId\": \"{{studentId}}\", \"status\": \"PRESENT\" }\n  ]\n}" }, "url": "{{baseUrl}}/attendance" } },
+        { "name": "Attendance by course", "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }], "url": "{{baseUrl}}/attendance/course/{{courseId}}?page=1&size=20" } },
+        { "name": "Attendance by student", "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }], "url": "{{baseUrl}}/attendance/student/{{studentId}}?page=1&size=20" } },
+        { "name": "My attendance summary", "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }], "url": "{{baseUrl}}/attendance/summary" } },
+        { "name": "Student attendance summary", "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }], "url": "{{baseUrl}}/attendance/student/{{studentId}}/summary" } }
+      ]
+    },
+    {
+      "name": "09 Marks",
+      "item": [
+        { "name": "Upload marks", "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }, { "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"courseId\": \"{{courseId}}\",\n  \"examType\": \"INTERNAL\",\n  \"semester\": 4,\n  \"records\": [\n    { \"studentId\": \"{{studentId}}\", \"marksObtained\": 82, \"totalMarks\": 100 }\n  ]\n}" }, "url": "{{baseUrl}}/marks" } },
+        { "name": "Marks by student", "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }], "url": "{{baseUrl}}/marks/student/{{studentId}}" } },
+        { "name": "My GPA", "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }], "url": "{{baseUrl}}/marks/gpa" } },
+        { "name": "Marks by course", "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }], "url": "{{baseUrl}}/marks/course/{{courseId}}" } },
+        { "name": "Marks by student and course", "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }], "url": "{{baseUrl}}/marks/student/{{studentId}}/course/{{courseId}}" } },
+        { "name": "Student GPA", "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }], "url": "{{baseUrl}}/marks/student/{{studentId}}/gpa" } }
+      ]
+    },
+    {
+      "name": "10 Statistics",
+      "item": [
+        { "name": "Admin statistics", "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }], "url": "{{baseUrl}}/stats/admin" } }
+      ]
+    }
+  ]
+}
