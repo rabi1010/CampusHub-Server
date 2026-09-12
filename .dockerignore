@@ -1,0 +1,16 @@
+target/
+.git/
+.gitattributes
+.mvn/
+.idea/
+.vscode/
+.claude/
+.settings/
+.classpath
+.project
+*.iml
+*.md
+.env
+.env.local
+postman/
+test_login.py
