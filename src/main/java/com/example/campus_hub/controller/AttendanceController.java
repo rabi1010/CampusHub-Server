@@ -18,7 +18,7 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/attendance")
 @CrossOrigin(
-        origins = "${app.frontend.url}",
+        origins = {"${app.frontend.url}", "https://campushub-n6bn.onrender.com"},
         allowCredentials = "true"
 )
 public class AttendanceController {

@@ -13,7 +13,7 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/api")
-@CrossOrigin(origins = "${app.frontend.url}", allowCredentials = "true")
+@CrossOrigin(origins = {"${app.frontend.url}", "https://campushub-n6bn.onrender.com"}, allowCredentials = "true")
 public class DepartmentController {
 
     private final DepartmentRepository deptRepo;

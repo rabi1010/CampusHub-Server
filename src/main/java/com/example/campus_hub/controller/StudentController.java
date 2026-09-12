@@ -18,7 +18,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 @RestController
 @RequestMapping("/api/students")
-@CrossOrigin(origins = "${app.frontend.url}", allowCredentials = "true")
+@CrossOrigin(origins = {"${app.frontend.url}", "https://campushub-n6bn.onrender.com"}, allowCredentials = "true")
 public class StudentController {
 
     private final StudentService studentService;

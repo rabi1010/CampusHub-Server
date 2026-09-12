@@ -9,7 +9,7 @@ import org.springframework.web.bind.annotation.*;
 @RestController
 @RequestMapping("/api/stats")
 @CrossOrigin(
-        origins = "${app.frontend.url}",
+        origins = {"${app.frontend.url}", "https://campushub-n6bn.onrender.com"},
         allowCredentials = "true"
 )
 public class StatsController {

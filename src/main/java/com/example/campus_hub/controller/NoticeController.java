@@ -15,7 +15,7 @@ import org.springframework.web.bind.annotation.*;
 @RestController
 @RequestMapping("/api/notices")
 @CrossOrigin(
-        origins = "${app.frontend.url}",
+        origins = {"${app.frontend.url}", "https://campushub-n6bn.onrender.com"},
         allowCredentials = "true"
 )
 public class NoticeController {

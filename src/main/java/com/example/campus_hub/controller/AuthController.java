@@ -19,7 +19,7 @@ import java.util.List;
 @RequestMapping("/api/auth")
 @RequiredArgsConstructor
 @CrossOrigin(
-        origins = "${app.frontend.url}",
+        origins = {"${app.frontend.url}", "https://campushub-n6bn.onrender.com"},
         allowCredentials = "true"
 )
 public class AuthController {
