@@ -27,6 +27,15 @@ public class JwtAuthFilter extends OncePerRequestFilter {
     }
 
     @Override
+    protected boolean shouldNotFilter(HttpServletRequest request) {
+        String path = request.getServletPath();
+        return path.equals("/api/auth/register") ||
+               path.equals("/api/auth/login")    ||
+               path.equals("/api/auth/logout")   ||
+               path.equals("/api/health");
+    }
+
+    @Override
     protected void doFilterInternal(
             HttpServletRequest  request,
             HttpServletResponse response,
@@ -35,8 +44,7 @@ public class JwtAuthFilter extends OncePerRequestFilter {
 
         String authHeader = request.getHeader("Authorization");
 
-        if (authHeader == null ||
-                !authHeader.startsWith("Bearer ")) {
+        if (authHeader == null || !authHeader.startsWith("Bearer ")) {
             chain.doFilter(request, response);
             return;
         }
@@ -44,7 +52,9 @@ public class JwtAuthFilter extends OncePerRequestFilter {
         String token = authHeader.substring(7);
 
         if (!jwtUtil.isTokenValid(token)) {
-            chain.doFilter(request, response);
+            // Do not continue as anonymous: Spring would otherwise turn an
+            // invalid bearer token into a misleading 403 response.
+            response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Invalid or expired token");
             return;
         }
 
